@@ -296,9 +296,9 @@ organism: organism_line classification_line
 
 organism_line: /ORGANISM/ organism_value { $return = $item[2] }
 
-organism_value: /([^\n]+)(?=\n)/xms { $return = $1 }
+organism_value: /(.*?)(?=\n.*;)/xms { $return = $1 }
 
-classification_line: /([^.]+)[.]/xms { $return = [ split(/;\s*/, $1) ] }
+classification_line: /(.*?)(?=\n\S)/xms { $return = [ split(/;\s*/, $1) ] }
 
 word: /\w+/
 
