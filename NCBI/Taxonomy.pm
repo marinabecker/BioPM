@@ -3,6 +3,7 @@ use Carp;
 use Data::Dumper;
 
 
+use List::Util;
 use File::Spec;
 use File::Basename;
 use File::Fetch;
@@ -32,12 +33,16 @@ If all of this is here already - the taxonomy tree is immediately loaded into me
 
 =cut
 
+my @levels = qw/superkingdom kingdom phylum class order family genus species/;
+my $memoized_get_taxon_rank = {};
+my $memoized_get_full_taxonomy = {};
 
 my $location = dirname(File::Spec->rel2abs(__FILE__));
 fetch_taxonomy() unless -e ("$location/tax_lookup.store");
 build_lookup_hash() unless -e ("$location/tax_lookup.store");
 my $taxonomy_tree = retrieve("$location/tax_lookup.store");
 
+build_hierarchy_counter();
 
 1;
 
@@ -58,7 +63,7 @@ Attempts to fetch taxdump.tar.gz and setup the lookup hash for other functions
 		$tar->extract_file("names.dmp",$location."/names.dmp");
 		$tar->extract_file("nodes.dmp",$location."/nodes.dmp");	
 		}
-	unlink($location."/taxdump.tar.gz");
+#	unlink($location."/taxdump.tar.gz");
 	build_lookup_hash();
 	return;
 	}
@@ -91,7 +96,6 @@ sub build_lookup_hash{
 		$parts[1] =~ s/\s+$//;
 		$taxonomy_tree->{$parts[0]}=[undef,undef,$parts[1]];
 		}
-
 	#put taxonomy tree into a structure
 	open(TAXTREE , '<' , "$location/nodes.dmp") || die $!;
 	
@@ -109,13 +113,88 @@ sub build_lookup_hash{
 
 		}
 	store $taxonomy_tree , "$location/tax_lookup.store";
-	unlink("$location/names.dmp");
-	unlink("$location/nodes.dmp");
+	#unlink("$location/names.dmp");
+	#unlink("$location/nodes.dmp");
 	return;
 	}
 
+sub build_hierarchy_counter{
+=pod 
+
+=head2 NCBI::Taxonomy->build_hierarchy_counters
+
+Creates an empty tree structure for hierarchical counting within taxons
+
+Current supported levels are SuperKingdom , Kingdom , Phylum , Class , Order, Family , Genus, and Species
+
+=cut
+
+	my $empty_tree_counter = {};
+	
+	return if (-e "$location/empty_tree_counter.store" ) ;
+	open(NAMES, '<' , "$location/nodes.dmp") || die $!;
+	
+	while (my $line = <NAMES>){
+		my $id = (split(/\|/,$line))[0];
+		$id =~s/\s+//g;
+		print Dumper $id  ;
+		print Dumper get_full_taxonomy( $id );
+		}
 
 
+
+
+
+	}
+
+sub get_full_taxonomy{
+=pod
+
+=head2 get_full_taxonomy()
+
+Given a taxonomic id returns a hash reference with the taxonomy. 
+
+	NCBI::Taxonomy->get_full_taxonomy(2902);
+	
+	$VAR1 = {
+	          'class' => '-',
+	          'genus' => 'Emiliania',
+	          'kingdom' => '-',
+	          'superkingdom' => 'Eukaryota',
+	          'family' => 'Noelaerhabdaceae',
+	          'order' => 'Isochrysidales',
+	          'phylum' => '-',
+	          'species' => '-'
+	        };
+
+
+
+=cut
+	my $id = shift @_;
+	my $memoize = shift @_;
+	my $tax = {
+		superkingdom => '',
+		kingdom => '',
+		phylum => '',
+		class => '', 
+		order => '', 
+		family => '',
+		genus => '', 
+		species => '',
+		};
+
+	my @return_string = ();
+		
+	while ($id  > 1){
+		$tax->{$taxonomy_tree->{$id}->[1]} = $taxonomy_tree->{$id}->[2] if exists $tax->{$taxonomy_tree->{$id}->[1]};
+		$id = $taxonomy_tree->{$id}->[0]; #get parent id;
+		}
+	map {
+		$tax->{$_} = '-' if $tax->{$_} eq '';
+		} keys %{$tax};
+	return $tax;
+
+	}
 sub get_taxon_rank{
 =pod 
 
@@ -138,7 +217,7 @@ If for anyreason a match isn't made (either the tax_id doesn't exist OR the tax_
 =cut
 	shift @_;
 	my ($id , $level) = @_;
-
+	my $original_id = $id;
 	unless ($level){
 		return (exists $taxonomy_tree->{$id})? $taxonomy_tree->{$id}->[2] : -1;
 		}
@@ -179,11 +258,18 @@ If for anyreason a match isn't made (either the tax_id doesn't exist OR the tax_
 		return -1;
 		}
 	
+	if (exist $memoized_get_taxon_rank->{$original_id}->{$level}){
+		return $memoized_get_taxon_rank->{$original_id}->{$level};
+		}
 
 	while ($taxonomy_tree->{$id}->[1] ne $level){
 		$id = $taxonomy_tree->{$id}->[0];
-		return -1 if (! defined($id) || $id == 0 || $id == 1); #we've reached root which means that this tax_id doesn't have a $level
+		if (! defined($id) || $id == 0 || $id == 1){
+			$memoized_get_taxon_rank->{$original_id}->{$level} = -1;
+			return -1
+			}
 		}
 
+	$memoized_get_taxon_rank->{$original_id}->{$level} = $taxonomy_tree->{$id}->[2];
 	return $taxonomy_tree->{$id}->[2];	
 	}
