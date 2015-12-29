@@ -11,6 +11,8 @@ use Archive::Tar;
 use List::Util qw /any/;
 use Storable;
 
+use JSON;
+
 use warnings;
 use strict;
 
@@ -162,10 +164,21 @@ sub new {
 	my $class = shift;
 	my %args  = ( @_ && ref $_[0] eq 'HASH' ) ? %{ $_[0] } : @_; 	
 
+
 	my $self = {
 		total_adds => 0,
-		tax_counter => {},
+		tax_counter => {}
 		};
+
+	# Build our base flare object
+	$self->{tax_counter}->{name}    = "flare";
+	$self->{tax_counter}->{size}    = 0;
+	$self->{tax_counter}->{children}=[];
+	
+	my $JSON = JSON->new();
+
+
+	print Dumper $JSON->encode($self->{tax_counter});
 
 	my $object = bless $self , $class;
 	return $object;
@@ -182,19 +195,27 @@ sub incrementID {
 
 	my @keys = split(/;/ , $key_list);
 
-	my $ref = \$self->{tax_counter};
 
-	#loop to the lowest possible and auto vivify as we go
-	$ref = \$$ref->{$_} foreach @keys;
 
-	if ($value){
-		$$ref+=$value;
-		$self->{total_adds}+=$value;
-		}
-	else {
-		$$ref++;
-		$self->{total_adds}++;
-		}
+#this builds a perfect nested hash structure. but it isn't quite what we need
+	# my $ref = \$self->{tax_counter};
+
+	# #loop to the lowest possible and auto vivify as we go
+	# $ref = \$$ref->{$_} foreach @keys;
+
+	# if ($value){
+	# 	$$ref+=$value;
+	# 	$self->{total_adds}+=$value;
+	# 	}
+	# else {
+	# 	$$ref++;
+	# 	$self->{total_adds}++;
+	# 	}
+
+
+#need a structure like this:
+
+
 	
 	return;
 	}

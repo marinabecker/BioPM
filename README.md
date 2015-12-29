@@ -55,3 +55,5 @@ I've also done everything I can to make sure that required binaries are INCLUDED
 SILVA and UNIPROT both need to be split into database interaction functions and parsers seperately. 
 
 Full Docs would be nice.
+
+Tests would be cool.
