@@ -198,22 +198,21 @@ sub incrementID {
 
 
 #this builds a perfect nested hash structure. but it isn't quite what we need
-	# my $ref = \$self->{tax_counter};
+	my $ref = \$self->{tax_counter};
 
-	# #loop to the lowest possible and auto vivify as we go
-	# $ref = \$$ref->{$_} foreach @keys;
+	#loop to the lowest possible and auto vivify as we go
+	$ref = \$$ref->{$_} foreach @keys;
 
-	# if ($value){
-	# 	$$ref+=$value;
-	# 	$self->{total_adds}+=$value;
-	# 	}
-	# else {
-	# 	$$ref++;
-	# 	$self->{total_adds}++;
-	# 	}
+	if ($value){
+		$$ref->{size}+=$value;
+		$self->{total_adds}+=$value;
+		}
+	else {
+		$$ref->{size}++;
+		$self->{total_adds}++;
+		}
 
 
-#need a structure like this:
 
 
 	
