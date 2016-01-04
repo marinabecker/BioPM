@@ -253,6 +253,10 @@ sub flare{
 
 	 	}@sorted_ids;
 
-
-print encode_json $flare;
+	 	$self->{flare} = encode_json $flare;
+		return $self->{flare};
 		}
+
+sub generate_html{
+	
+	}
