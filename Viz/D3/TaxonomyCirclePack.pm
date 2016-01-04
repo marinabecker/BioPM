@@ -34,7 +34,6 @@ It will fetch the NCBI taxdump if it doesn't exist;
 =cut
 
 my @levels = qw/superkingdom kingdom phylum class order family genus species/;
-
 my $location = dirname(File::Spec->rel2abs(__FILE__));
 fetch_taxonomy() unless -e ("$location/tax_lookup");
 build_lookup_array() unless -e ("$location/tax_lookup");
@@ -123,7 +122,7 @@ Builds a look up array where tax id -> superkingdom;kingdom;phylum;class;order;f
 
 	my @ids = ();
 
-	# open (IDOUT,'>', "$location/tax_keys.txt") || die $!;
+
 	map {
 		my @array = ();
 		my $base_id = $_;
@@ -137,10 +136,6 @@ Builds a look up array where tax id -> superkingdom;kingdom;phylum;class;order;f
 				}
 
 			$ids[$base_id]= join(';', @array);
-
-			# unshift(@array,$base_id);
-			# print IDOUT join (';' , @array) . "\n";
-
 
 			}
 
@@ -179,37 +174,85 @@ sub new {
 
 sub incrementID {
 	my ($self , $id , $value) = @_;
-
+	return unless $id;
 	my $key_list = $look_up_array->[$id];
-
-
 	return unless defined $key_list;
-
-	my @keys = split(/;/ , $key_list);
-
-
-
-#this builds a perfect nested hash structure. but it isn't quite what we need
-	my $ref = \$self->{tax_counter};
-
-	#loop to the lowest possible and auto vivify as we go
-	$ref = \$$ref->{$_} foreach @keys;
-
-	if ($value){
-		$$ref->{size}+=$value;
-		$self->{total_adds}+=$value;
-		}
-	else {
-		$$ref->{size}++;
-		$self->{total_adds}++;
-		}
-
-
-
-
-	
+	($value)? $self->{tax_counter}->{$id} +=$value : $self->{tax_counter}->{$id}++;
+	($value)? $self->{total_adds} += $value : $self->{total_adds}++;
 	return;
+	
+#   #this builds a perfect nested hash structure. but it isn't quite what we need
+#   my @keys = split(/;/ , $key_list);
+# 	my $ref = \$self->{tax_counter};
+
+# 	#loop to the lowest possible and auto vivify as we go
+# 	$ref = \$$ref->{$_} foreach @keys;
+
+# 	if ($value){
+# 		$$ref->{size}+=$value;
+# 		$self->{total_adds}+=$value;
+# 		}
+# 	else {
+# 		$$ref->{size}++;
+# 		$self->{total_adds}++;
+# 		}
 	}
 
 
+sub flare{
 
+	my $self = shift;
+	
+	my @sorted_ids;
+
+	@sorted_ids = map { $_->[0] }
+					 sort { $a->[1] <=> $b->[1] }
+					 map { [ $_ , $look_up_array->[$_]=~ tr/\;/\;/ ] }
+					 keys %{$self->{tax_counter}};
+
+		
+
+
+
+	my $flare = {
+		name => 'flare'
+		};
+
+	 map{
+	 	my @taxonomy = split (/;/ , $look_up_array->[$_]);
+	 	my $ref = \$flare; #top of the tree;
+	 	foreach my $taxon(@taxonomy){
+	 		if ( defined $$ref->{children}){
+	 			my $index = 0;
+	 			my $exists = 0;
+	 			foreach my $i (@{$$ref->{children}}){
+	 				if ($i->{name} && $i->{name} eq $taxon){
+	 					$exists = 1;
+	 					last;
+	 					}
+	 				$index++;
+	 				}
+	 			if ($exists){
+	 				$ref = \$$ref->{children}->[$index];
+	 				}
+	 			else{
+					push @{$$ref->{children}} , {name => $taxon};
+		 			$ref = \$$ref->{children}->[-1];
+	 				}
+	 			}
+
+	 		else{
+	 			push @{$$ref->{children}} , {name => $taxon};
+	 			$ref = \$$ref->{children}->[-1];
+	 			}
+
+	 		}
+		if (exists $self->{tax_counter}->{$_}){
+			$$ref->{size} = $self->{tax_counter}->{$_};
+			}
+
+	 	}@sorted_ids;
+
+
+print encode_json $flare;
+		}

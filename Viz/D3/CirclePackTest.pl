@@ -10,9 +10,15 @@ use Data::Dumper;
 
 my $struct = Viz::D3::TaxonomyCirclePack->new();
 
-$struct->incrementID(866770);
-$struct->incrementID(866770,500);
+open (IN , '<' , 'Kraken.report') || die $!;
 
-print Dumper $struct;
+while (my $line = <IN>){
+	chomp $line;
+	my @tmp = split(/\t+/ , $line);
+	($tmp[3] eq 'S')?$struct->incrementID($tmp[4] , $tmp[1]) :$struct->incrementID($tmp[4] , $tmp[2]);
+	
+	}
+
+$struct->flare();
 
 exit;
