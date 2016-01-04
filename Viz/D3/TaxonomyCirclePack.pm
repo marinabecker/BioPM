@@ -170,15 +170,7 @@ sub new {
 		tax_counter => {}
 		};
 
-	# Build our base flare object
-	$self->{tax_counter}->{name}    = "flare";
-	$self->{tax_counter}->{size}    = 0;
-	$self->{tax_counter}->{children}=[];
 	
-	my $JSON = JSON->new();
-
-
-	print Dumper $JSON->encode($self->{tax_counter});
 
 	my $object = bless $self , $class;
 	return $object;
