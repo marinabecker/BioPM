@@ -127,27 +127,17 @@ Builds a look up array where tax id -> superkingdom;kingdom;phylum;class;order;f
 		my @array = ();
 		my $base_id = $_;
 		my $id = $base_id;
-
 		if (exists $taxonomy_tree->{$base_id}){
-
 			while ($id > 1){
 				unshift (@array , $taxonomy_tree->{$id}->[2]) if (any {$_ eq $taxonomy_tree->{$id}->[1] }  @levels);
 				$id =  $taxonomy_tree->{$id}->[0];
 				}
-
 			$ids[$base_id]= join(';', @array);
-
 			}
-
 		} keys %{$taxonomy_tree};
-
-	# close (IDOUT);
 	store \@ids, "$location/tax_lookup" || die $!;
-
 	unlink "$location/names.dmp";
 	unlink "$location/nodes.dmp";
-
-
 	return;
 	}
 
@@ -155,17 +145,22 @@ Builds a look up array where tax id -> superkingdom;kingdom;phylum;class;order;f
 
 
 sub new {
+=pod
 
+=head2 new
+
+Creates a new basic object for holding taxonomic data.
+
+	my $object = Viz::D3::TaxonomyCirclePack->new();
+
+
+=cut
 	my $class = shift;
-	my %args  = ( @_ && ref $_[0] eq 'HASH' ) ? %{ $_[0] } : @_; 	
-
 
 	my $self = {
 		total_adds => 0,
 		tax_counter => {}
 		};
-
-	
 
 	my $object = bless $self , $class;
 	return $object;
@@ -173,6 +168,17 @@ sub new {
 
 
 sub incrementID {
+=pod 
+
+=head2 incrementID()
+
+Increments a taxonomic id, if a value is passed to the method increments it by that amount
+
+	$object->incrementID(23); # increments taxonomic id 23 by 1
+	$object->incremembtID(23,500); #increments taxonomic id 23 by 50
+
+=cut
+
 	my ($self , $id , $value) = @_;
 	return unless $id;
 	my $key_list = $look_up_array->[$id];
@@ -180,39 +186,42 @@ sub incrementID {
 	($value)? $self->{tax_counter}->{$id} +=$value : $self->{tax_counter}->{$id}++;
 	($value)? $self->{total_adds} += $value : $self->{total_adds}++;
 	return;
-	
-#   #this builds a perfect nested hash structure. but it isn't quite what we need
-#   my @keys = split(/;/ , $key_list);
-# 	my $ref = \$self->{tax_counter};
+	}
 
-# 	#loop to the lowest possible and auto vivify as we go
-# 	$ref = \$$ref->{$_} foreach @keys;
+sub normalize{
+=pod 
 
-# 	if ($value){
-# 		$$ref->{size}+=$value;
-# 		$self->{total_adds}+=$value;
-# 		}
-# 	else {
-# 		$$ref->{size}++;
-# 		$self->{total_adds}++;
-# 		}
+=head2 normalize()
+
+Normalizes all values by the number total number of elements in the object
+
+	$object->normalize()
+
+=cut
+	my $self = shift;
+	return unless $self->{total_adds};
+	map{
+		$_ = $_ / $self->{total_adds};
+		}keys %{$self->{tax_counter}};
+	return;
 	}
 
 
-sub flare{
+sub flareSimple{
+=pod
 
+=head2 flareSimple()
+
+Converts a basic object into a simple flare figure
+
+=cut
 	my $self = shift;
 	
-	my @sorted_ids;
-
-	@sorted_ids = map { $_->[0] }
+	#Schwartsian transform to sort by number of taxonomic items;
+	my @sorted_ids = map { $_->[0] }
 					 sort { $a->[1] <=> $b->[1] }
 					 map { [ $_ , $look_up_array->[$_]=~ tr/\;/\;/ ] }
 					 keys %{$self->{tax_counter}};
-
-		
-
-
 
 	my $flare = {
 		name => 'flare'
@@ -253,10 +262,171 @@ sub flare{
 
 	 	}@sorted_ids;
 
-	 	$self->{flare} = encode_json $flare;
-		return $self->{flare};
-		}
+	$self->{flare} = encode_json $flare;
+	return $self->{flare};
+	}
 
-sub generate_html{
-	
+
+sub drawSimple{
+=pod 
+
+=head2 drawSimple()
+
+Takes a simple flare object and draws it as a circle pack. 
+
+
+=cut
+	my $self = shift;
+	$self->flareSimple() unless exists $self->{flare};
+
+	(my $document = qq @
+
+	<!DOCTYPE html>
+	<html>
+	<head>
+	<meta charset="utf-8">
+	<style>
+
+	.node {
+	  cursor: pointer;
+	}
+
+	.node:hover {
+	  stroke: #000;
+	  stroke-width: 1.5px;
+	}
+
+	.node--leaf {
+	  fill: white;
+	}
+
+	.label {
+	  font: 10px "Helvetica Neue", Helvetica, Arial, sans-serif;
+	  text-anchor: middle;
+	  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
+	}
+
+	.label,
+	.node--root,
+	.node--leaf {
+	  pointer-events: none;
+	}
+
+	.d3-tip {
+	  line-height: 1;
+	  font-weight: bold;
+	  padding: 12px;
+	  background: rgba(0, 0, 0, 0.8);
+	  color: #fff;
+	  border-radius: 2px;
+	  -webkit-transition: opacity 0.3s; /* For Safari 3.1 to 6.0 */
+	  transition: opacity 0.3s;
+	}
+
+	/* Creates a small triangle extender for the tooltip */
+	.d3-tip:after {
+	  box-sizing: border-box;
+	  display: inline;
+	  font-size: 10px;
+	  width: 100%;
+	  line-height: 1;
+	  color: rgba(0, 0, 0, 0.8);
+	  content: "\25BC";
+	  position: absolute;
+	  text-align: center;
+	}
+
+	/* Style northward tooltips differently */
+	.d3-tip.n:after {
+	  margin: -1px 0 0 0;
+	  top: 100%;
+	  left: 0;
+	}
+	</style>
+	</head>
+	<body>
+	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script>
+
+	var root = $self->{flare};
+
+	var margin = 10,
+	    diameter = 960;
+
+	var color = d3.scale.linear()
+	    .domain([-1, 7])
+	    .range(["hsl(152,20%,80%)", "hsl(228,90%,15%)"])
+	    .interpolate(d3.interpolateHcl);
+
+	var pack = d3.layout.pack()
+	    .padding(100)
+	    .size([diameter - margin, diameter - margin])
+	    .value(function(d) { return d.size; }) 
+
+	var svg = d3.select("body").append("svg")
+	    .attr("width", diameter)
+	    .attr("height", diameter)
+	    .append("g")
+	    .attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+
+	var focus = root,
+	      nodes = pack.nodes(root),
+	      view;
+
+	var circle = svg.selectAll("circle")
+	      .data(nodes)
+	      .enter().append("circle")
+	      .attr("class", function(d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
+	      .style("fill", function(d) { return d.children ? color(d.depth) : null; })
+	      .on("click", function(d) { if (focus !== d) zoom(d), d3.event.stopPropagation(); })
+	      .on('mouseout', function (d) {tipCirclePack.hide(d)});
+
+	  var text = svg.selectAll("text")
+	      .data(nodes)
+	      .enter().append("text")
+	      .attr("class", "label")
+	      .style("fill-opacity", function(d) { return d.parent === root ? 1 : 0; })
+	      .style("display", function(d) { return d.parent === root ? null : "none"; })
+	      .text(function(d) { return d.name });// ! d.children ? d.name : d.size > 10 ? d.name : null }); // play with this to display text on specific size 
+
+	  var node = svg.selectAll("circle,text");
+
+	  d3.select("body")
+	      .style("background", color(-1))
+	      .on("click", function() { zoom(root); });
+
+	  zoomTo([root.x, root.y, root.r * 2 + margin]);
+
+	  function zoom(d) {
+	    var focus0 = focus; focus = d;
+
+	    var transition = d3.transition()
+	        .duration(d3.event.altKey ? 750 : 750)
+	        .tween("zoom", function(d) {
+	          var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
+	          return function(t) { zoomTo(i(t)); };
+	        });
+
+	    transition.selectAll("text")
+	      .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
+	        .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
+	        .each("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
+	        .each("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });
+	  }
+
+	  function zoomTo(v) {
+	    var k = diameter / v[2]; view = v;
+	    node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+	    circle.attr("r", function(d) { return d.r * k; });
+	  }
+
+
+	d3.select(self.frameElement).style("height", diameter + "px");
+
+	</script>
+	</body>
+	</html>
+	@) =~ s/^\t//mg;
+
+return $document;
 	}

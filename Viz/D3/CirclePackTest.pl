@@ -19,6 +19,8 @@ while (my $line = <IN>){
 	
 	}
 
-$struct->flare();
+$struct->normalize();
+$struct->flareSimple();
 
+print $struct->drawSimple();
 exit;
