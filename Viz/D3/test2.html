@@ -75,16 +75,16 @@ var root = {
     {
      "name": "cluster",
      "children": [
-      {"name": "AgglomerativeCluster", "control": [39, 10] , "treatment" : [390, 10]},
-      {"name": "CommunityStructure", "control": [39, 10] , "treatment" : [390, 10]},
-      {"name": "MergeEdge", "control": [39, 10] , "treatment" : [390, 10]}
+      {"name": "AgglomerativeCluster", "sample": [39, 10, 390, 10]},
+      {"name": "CommunityStructure", "sample": [39, 10, 390, 10]},
+      {"name": "MergeEdge", "sample": [39, 10, 390, 10]}
      ]
     },
     {
      "name": "graph",
      "children": [
-      {"name": "BetweennessCentrality", "control": [39, 10] , "treatment" : [390, 10]},
-      {"name": "LinkDistance", "control": [39, 10] , "treatment" : [3900, 10]}
+      {"name": "BetweennessCentrality", "sample": [39, 10, 390, 10]},
+      {"name": "LinkDistance", "sample": [39, 10, 3900, 10]}
      ]
     }
    ]
@@ -92,7 +92,7 @@ var root = {
  ]
 };
 
-var shapeData = ["Before", "After"], 
+var shapeData = ["Before", "After"],
     j = 0;  // Choose the rectangle as default
 
 // Create the shape selectors
@@ -126,9 +126,48 @@ var color = d3.scale.linear()
 var pack = d3.layout.pack()
     .padding(10)
     .size([diameter - margin, diameter - margin])
-    .value(function(d) { return val == 0 ?   d.control.reduce(function(a,b){return a+b;}) : d.treatment.reduce(function(a,b){return a+b;}) })
+    .value(
+  function(d) {
+    if (val == 0) {
+      return d.sample.reduce(function(a,b) {
+        return a+b;
+                                            }
+                             )
+                }
+              }
+          )
 
      // edit this number to set minimum size before circle is drawn
+
+// var bars = d3.layout.stack()
+// Set up scales
+// var xScale = d3.scale.ordinal()
+// 	.domain(d3.range(dataset[0].length))
+// 	.rangeRoundBands([0, w], 0.05);
+// var yScale = d3.scale.linear()
+// 	.domain([0,
+// 		d3.max(dataset, function(d) {
+// 			return d3.max(d, function(d) {
+// 				return d.y0 + d.y;
+// 			});
+// 		})
+//   ])
+//   .range([0, h]);
+
+// var rects = groups.selectAll("rect")
+//         .data(function(d) { return d; })
+//         .enter()
+//         .append("rect")
+//         .attr("x", function(d, i) {
+//                 return xScale(i);
+//         })
+//         .attr("y", function(d) {
+//                 return yScale(d.y0);
+//         })
+//         .attr("height", function(d) {
+//                 return yScale(d.y);
+//         })
+//         .attr("width", xScale.rangeBand());
 
 // var arc = d3.svg.arc()
 // 	.outerRadius(radius - 10)
@@ -164,7 +203,7 @@ var circle = svg.selectAll("circle")
       .attr("class", "label")
       .style("fill-opacity", function(d) { return d.parent === root ? 1 : 0; })
       .style("display", function(d) { return d.parent === root ? null : "none"; })
-      .text(function(d) { return d.name });// ! d.children ? d.name : d.size > 10 ? d.name : null }); // play with this to display text on specific size 
+      .text(function(d) { return d.name });// ! d.children ? d.name : d.size > 10 ? d.name : null }); // play with this to display text on specific size
 
   var node = svg.selectAll("circle,text");
 
